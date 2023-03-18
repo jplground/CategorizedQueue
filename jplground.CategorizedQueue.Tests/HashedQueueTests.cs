@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace jplground.CategorizedQueue.Tests;
 
 public class HashedQueueTests
@@ -85,5 +87,23 @@ public class HashedQueueTests
         queue.RemoveIfSame(item1.Key, item1.Value).Should().BeFalse();
 
         queue.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public void GivenLotsOfItemsAddedToTheQueue_TheDequeueIsDoneInOrderOfAdding()
+    {
+        var keys = Enumerable.Range(0, 1000).Select(i => Guid.NewGuid()).ToArray();
+        var queue = new HashedQueue<Guid, object>();
+        foreach(var key in keys)
+        {
+            queue.Add(key, new object());
+        }
+        var dequeued = new List<Guid>();
+        while(queue.TryDequeue(out var next))
+        {
+            dequeued.Add(next.Value.Key);
+        }
+        dequeued.Should().ContainInOrder(keys);
+        dequeued.Should().HaveCount(keys.Length);
     }
 }
