@@ -1,5 +1,3 @@
-using System;
-
 namespace jplground.CategorizedQueue;
 
 internal record QueueNode<Tkey, TValue>(Tkey Key, TValue Value)

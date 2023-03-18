@@ -1,20 +1,5 @@
 namespace jplground.CategorizedQueue;
 
-public interface IQueueItem<TKey, TValue> : IDisposable
-{
-    TKey Key { get; }
-    TValue Value { get; }
-}
-
-public class AssertionException : Exception
-{
-    public AssertionException(string message)
-        : base(message)
-    {
-        
-    }
-}
-
 public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : notnull
 {
     public bool HasWorkAvailable => _hasPendingWork.IsSet;

@@ -1,6 +1,3 @@
-using FluentAssertions;
-using jplground.CategorizedQueue;
-
 namespace jplground.CategorizedQueue.Tests;
 
 public class HashedQueueTests
