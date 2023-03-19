@@ -106,6 +106,28 @@ public class CategorizedQueueTests
         queue.TryProcessNextInline().Should().BeFalse();
 
         results.Should().ContainInOrder(new [] {1, 2, 3, 4, 5});
+    }
 
+    [Fact]
+    public void GivenAQueueWithManyItemsOfDifferentKeys_WhenAllHaveBeenProcessed_WasProcessedInOrder()
+    {
+        var queue = new ActionCategorizedQueue<Guid>();
+        var results = new List<int>();
+
+        queue.Enqueue(Guid.NewGuid(), () => results.Add(1));
+        queue.Enqueue(Guid.NewGuid(), () => results.Add(2));
+        queue.Enqueue(Guid.NewGuid(), () => results.Add(3));
+        queue.Enqueue(Guid.NewGuid(), () => results.Add(4));
+        queue.Enqueue(Guid.NewGuid(), () => results.Add(5));
+
+        queue.TryProcessNextInline().Should().BeTrue();
+        queue.TryProcessNextInline().Should().BeTrue();
+        queue.TryProcessNextInline().Should().BeTrue();
+        queue.TryProcessNextInline().Should().BeTrue();
+        queue.TryProcessNextInline().Should().BeTrue();
+        // There should be nothing left
+        queue.TryProcessNextInline().Should().BeFalse();
+
+        results.Should().ContainInOrder(new [] {1, 2, 3, 4, 5});
     }
 }

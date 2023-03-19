@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace jplground.CategorizedQueue.Tests;
 
 public class HashedQueueTests

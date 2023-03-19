@@ -2,8 +2,9 @@ namespace jplground.CategorizedQueue;
 
 public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : notnull
 {
-    public bool HasWorkAvailable => _hasPendingWork.IsSet;
-    private ManualResetEventSlim _hasPendingWork = new ManualResetEventSlim();
+    public bool HasWorkAvailable => _hasPendingWork.WaitOne(0);
+    public WaitHandle WorkAvailableWaitHandle => _hasPendingWork;
+    private ManualResetEvent _hasPendingWork = new ManualResetEvent(false);
 
     private readonly HashedQueue<TKey, QueueItem> _workThatBlocks = new HashedQueue<TKey, QueueItem>();
     private readonly HashedQueue<TKey, QueueItem> _workThatIsReadyToProcess = new HashedQueue<TKey, QueueItem>();
@@ -20,7 +21,7 @@ public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : 
     {
         lock(_locker)
         {
-            var queueItem = new QueueItem(this, new QueueNode<TKey, TValue>(key, value));
+            var queueItem = new QueueItem(this, new QueueNode(key, value));
             QueueItem? replacedNode = _workThatBlocks.ReplaceOrAdd(key, queueItem);
             if(replacedNode is null)
             {
@@ -102,7 +103,7 @@ public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : 
 
     private class QueueItem : IQueueItem<TKey, TValue>
     {
-        public QueueNode<TKey, TValue> QueueNode { get; }
+        public QueueNode QueueNode { get; }
 
         public TKey Key => QueueNode.Key;
         public TValue Value => QueueNode.Value;
@@ -110,7 +111,7 @@ public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : 
         private readonly CategorizedQueue<TKey, TValue> _parent;
         private bool _disposed = false;
 
-        public QueueItem(CategorizedQueue<TKey, TValue> parent, QueueNode<TKey, TValue> queueNode)
+        public QueueItem(CategorizedQueue<TKey, TValue> parent, QueueNode queueNode)
         {
             _parent = parent;
             QueueNode = queueNode;
@@ -132,4 +133,10 @@ public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : 
         // Arguably there should be a destructor here to verify that it won't be called.
         // But that will just slow things down. Leaving it without one and will do suitable testing.
     }
+
+    private record QueueNode(TKey Key, TValue Value)
+    {
+        public QueueNode? NodeBlockedByThis { get; set; }
+    }
+
 }
