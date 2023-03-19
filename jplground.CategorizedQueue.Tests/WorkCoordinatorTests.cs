@@ -23,10 +23,27 @@ public class WorkCoordinatorTests
     {
         var workCoordinator = new WorkCoordinator<WorkItemCategory, Guid>(1, OnlySpareCapacitySetup);
         ManualResetEventSlim evt = new ManualResetEventSlim();
-        workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () => {evt.Set();});
+        var enqueuedTask = workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () => {evt.Set();});
         var cts = new CancellationTokenSource();
         var t = workCoordinator.StartProcessingLoop(cts.Token);
         evt.Wait();
+        await enqueuedTask;
+
+        // And clean up
+        cts.Cancel();
+        await t;
+    }
+
+    [Fact(Timeout = 1_000)]
+//    [Fact]
+    public async Task GivenWorkWithAReturnValue_TheReturnValueIsAvailable()
+    {
+        var workCoordinator = new WorkCoordinator<WorkItemCategory, Guid>(1, OnlySpareCapacitySetup);
+        var enqueuedTask = workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () => 42);
+        var cts = new CancellationTokenSource();
+        var t = workCoordinator.StartProcessingLoop(cts.Token);
+        var result = await enqueuedTask;
+        result.Should().Be(42);
 
         // And clean up
         cts.Cancel();
@@ -42,10 +59,45 @@ public class WorkCoordinatorTests
         var cts = new CancellationTokenSource();
         var t = workCoordinator.StartProcessingLoop(cts.Token);
 
-        workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () => {evt.Set();});
+        await workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () => {evt.Set();});
         evt.Wait();
 
         // And clean up
+        cts.Cancel();
+        await t;
+    }
+
+//    [Fact]
+    [Fact(Timeout = 10_000)]
+    public async Task GivenLotsOfTasksOfTheSameKey_TheyShouldProcessInOrder()
+    {
+        var key = Guid.NewGuid();
+        var workCoordinator = new WorkCoordinator<WorkItemCategory, Guid>(1, OnlySpareCapacitySetup);
+        var results = new List<int>();
+        var enqueued = new List<Task>();
+
+        var numTasks = 10_000;
+
+        var cts = new CancellationTokenSource();
+        var t = workCoordinator.StartProcessingLoop(cts.Token);
+
+        for(int i = 0; i < numTasks; ++i)
+        {
+            int id = i;
+            enqueued.Add(workCoordinator.Enqueue(WorkItemCategory.Kafka, key, () => {results.Add(id);}));
+        }
+
+        foreach(var q in enqueued)
+        {
+            await q;
+        }
+
+        results.Count.Should().Be(numTasks);
+        for(int i = 0; i < numTasks - 1; ++i)
+        {
+            results[i].Should().Be(results[i + 1] - 1);
+        }
+
         cts.Cancel();
         await t;
     }

@@ -1,6 +1,6 @@
 namespace jplground.CategorizedQueue;
 
-public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : notnull
+public class CategorizedQueue<TKey, TValue> : IDisposable where TKey : notnull
 {
     public bool HasWorkAvailable => _hasPendingWork.WaitOne(0);
     public WaitHandle WorkAvailableWaitHandle => _hasPendingWork;
@@ -79,7 +79,6 @@ public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : 
 #endif
 
             // Something that was dequeud from _workThatIsReadyToProcess has completed.
-
             var blockingNode = queueItem.QueueNode.NodeBlockedByThis;
             if(blockingNode is null)
             {
@@ -127,6 +126,7 @@ public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : 
             // If this throws, we're in a real mess.
             // Shouldn't call it disposed if that happens, but also don't want to not dispose it.
             _parent.WorkHasCompleted(this);
+
             _disposed = true;
         }
 
@@ -138,5 +138,4 @@ public abstract class CategorizedQueue<TKey, TValue> : IDisposable where TKey : 
     {
         public QueueNode? NodeBlockedByThis { get; set; }
     }
-
 }

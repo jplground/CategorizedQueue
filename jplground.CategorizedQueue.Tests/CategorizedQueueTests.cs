@@ -130,4 +130,18 @@ public class CategorizedQueueTests
 
         results.Should().ContainInOrder(new [] {1, 2, 3, 4, 5});
     }
+
+    [Fact]
+    public async void TryWithTasks()
+    {
+        var queue = new CategorizedQueue<Guid, Task>();
+        var taskToEnqueue = new Task<int>(() => 1);
+        queue.Enqueue(Guid.NewGuid(), taskToEnqueue);
+
+        queue.TryDequeue(out var removedItem).Should().BeTrue();
+        removedItem!.Value.RunSynchronously();
+        removedItem.Value.Dispose();
+        var result = await taskToEnqueue;
+        result.Should().Be(1);
+    }
 }

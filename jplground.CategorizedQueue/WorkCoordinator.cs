@@ -6,7 +6,7 @@ public class WorkCoordinator<TCategory, TKey>
 {
     // The content of this doesn't change so we don't have to worry about threading.
     // The underlying ActionCategorizedQueue is threadsafe anyway.
-    private readonly Dictionary<TCategory, ActionCategorizedQueue<TKey>> _queues;
+    private readonly Dictionary<TCategory, CategorizedQueue<TKey, Task>> _queues;
     private readonly ThreadCacheWithSpareCapacity<TCategory> _workerThreads;
     private Task[] _workerTasks;
 
@@ -15,19 +15,33 @@ public class WorkCoordinator<TCategory, TKey>
     public WorkCoordinator(int numSpareThreads, IDictionary<TCategory, int> maxThreadsByKey)
     {
         _workerThreads = new ThreadCacheWithSpareCapacity<TCategory>(numSpareThreads, maxThreadsByKey);
-        _queues = maxThreadsByKey.Keys.ToDictionary(cat => cat, cat => new ActionCategorizedQueue<TKey>());
+        _queues = maxThreadsByKey.Keys.ToDictionary(cat => cat, cat => new CategorizedQueue<TKey, Task>());
 
         _workerTasks = new Task[CategoryCount];
     }
 
-    public void Enqueue(TCategory category, TKey key, Action work)
+    public Task<T> Enqueue<T>(TCategory category, TKey key, Func<T> work)
     {
-        if(!_queues.ContainsKey(category))
+        if(!_queues.TryGetValue(category, out var queue))
         {
             throw new InvalidOperationException($"Category {category} not recognized. Cannot process work.");
         }
 
-        _queues[category].Enqueue(key, work);
+        var enqueuedTask = new Task<T>(work);
+        queue.Enqueue(key, enqueuedTask);
+        return enqueuedTask;
+    }
+
+    public Task Enqueue(TCategory category, TKey key, Action work)
+    {
+        if(!_queues.TryGetValue(category, out var queue))
+        {
+            throw new InvalidOperationException($"Category {category} not recognized. Cannot process work.");
+        }
+
+        var enqueuedTask = new Task(work);
+        queue.Enqueue(key, enqueuedTask);
+        return enqueuedTask;
     }
 
     public async Task StartProcessingLoop(CancellationToken token)
@@ -50,15 +64,15 @@ public class WorkCoordinator<TCategory, TKey>
                     // Start the task (fire-and-forget) on the threadpool
                     _ = Task.Run(() =>
                     {
-                        // Run the worker asynchronously on the threadpool
-                        queueItem.Value();
+                        // TODO: This should be run on the enqueuers synchronization context
+                        queueItem.Value.RunSynchronously();
                     }).ContinueWith((ant) => 
                     {
                         if(ant.Status == TaskStatus.Faulted)
                         {
                             // TODO: Logging
                         }
-                        
+
                         try
                         {
                             // This work item has been processed so we can free it up for the next person.

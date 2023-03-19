@@ -1,6 +1,6 @@
-namespace jplground.CategorizedQueue;
+namespace jplground.CategorizedQueue.Tests;
 
-public class ActionCategorizedQueue<TKey> : CategorizedQueue<TKey, Action> where TKey : notnull
+public class ActionCategorizedQueue<T> : CategorizedQueue<T, Action> where T : notnull
 {
     public bool TryProcessNextInline()
     {
