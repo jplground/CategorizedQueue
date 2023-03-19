@@ -4,4 +4,5 @@ public interface IQueueItem<TKey, TValue> : IDisposable
 {
     TKey Key { get; }
     TValue Value { get; }
+    SynchronizationContext? SynchronizationContext { get; }
 }

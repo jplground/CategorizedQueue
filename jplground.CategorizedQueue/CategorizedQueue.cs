@@ -106,6 +106,7 @@ public class CategorizedQueue<TKey, TValue> : IDisposable where TKey : notnull
 
         public TKey Key => QueueNode.Key;
         public TValue Value => QueueNode.Value;
+        public SynchronizationContext? SynchronizationContext { get; }
 
         private readonly CategorizedQueue<TKey, TValue> _parent;
         private bool _disposed = false;
@@ -114,6 +115,7 @@ public class CategorizedQueue<TKey, TValue> : IDisposable where TKey : notnull
         {
             _parent = parent;
             QueueNode = queueNode;
+            SynchronizationContext = SynchronizationContext.Current;
         }
 
         public void Dispose()

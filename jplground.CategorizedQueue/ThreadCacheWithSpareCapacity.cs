@@ -59,7 +59,7 @@ public class ThreadCacheWithSpareCapacity<TCategory> : IDisposable where TCatego
             throw new Exception($"Did not have configuration for key {key}. Can't process it.");
         }
 
-        var signaledWaitHandleIndex = await WaitHandleExtensions.WaitAnyAsync(keyThread, token);
+        var signaledWaitHandleIndex = await WaitHandleExtensions.WaitAnyAsync(keyThread, token).ConfigureAwait(false);
 
         return new WorkerItem(this, key, signaledWaitHandleIndex == KEY_POOL_INDEX);
     }
