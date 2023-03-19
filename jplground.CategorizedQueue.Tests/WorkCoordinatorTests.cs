@@ -33,7 +33,8 @@ public class WorkCoordinatorTests
         await t;
     }
 
-    [Fact]
+    [Fact(Timeout = 1_000)]
+//    [Fact]
     public async Task GivenAQueueWithNo_AndTheProcessingLoopStarts_ThenWorkIsEnqueued_WorkIsProcessed()
     {
         var workCoordinator = new WorkCoordinator<WorkItemCategory, Guid>(1, OnlySpareCapacitySetup);

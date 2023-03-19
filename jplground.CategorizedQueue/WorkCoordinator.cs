@@ -10,8 +10,6 @@ public class WorkCoordinator<TCategory, TKey>
     private readonly ThreadCacheWithSpareCapacity<TCategory> _workerThreads;
     private Task[] _workerTasks;
 
-    private const int WAIT_FOR_WORK_TIMEOUT_MS = 1;
-
     public int CategoryCount => _queues.Count;
 
     public WorkCoordinator(int numSpareThreads, IDictionary<TCategory, int> maxThreadsByKey)
@@ -42,8 +40,9 @@ public class WorkCoordinator<TCategory, TKey>
             {
                 while(!token.IsCancellationRequested)
                 {
-                    if(!queue.WorkAvailableWaitHandle.WaitOne(WAIT_FOR_WORK_TIMEOUT_MS))
-                        continue;
+                    // Wait for work
+                    await queue.WorkAvailableWaitHandle.ToTask().WaitAsync(token);
+
                     // There is work to process
                     if(!queue.TryDequeue(out var queueItem))
                         continue;
@@ -51,13 +50,33 @@ public class WorkCoordinator<TCategory, TKey>
                     // Start the task (fire-and-forget) on the threadpool
                     _ = Task.Run(() =>
                     {
+                        // Run the worker asynchronously on the threadpool
                         queueItem.Value();
                     }).ContinueWith((ant) => 
                     {
-                        // This work item has been processed so we can free it up for the next person.
-                        queueItem.Dispose();
-                        // We're done with this worker thread. We can return it to the pool.
-                        workerThreadSubscription.Dispose();
+                        if(ant.Status == TaskStatus.Faulted)
+                        {
+                            // TODO: Logging
+                        }
+                        
+                        try
+                        {
+                            // This work item has been processed so we can free it up for the next person.
+                            queueItem.Dispose();
+                        }
+                        catch 
+                        {
+                            // TODO: Logging
+                        }
+                        try
+                        {
+                            // We're done with this worker thread. We can return it to the pool.
+                            workerThreadSubscription.Dispose();
+                        }
+                        catch 
+                        {
+                            // TODO: Logging
+                        }
                     });
                 }
             });
@@ -66,6 +85,14 @@ public class WorkCoordinator<TCategory, TKey>
 
         // And wait until they all complete.
         // Which should be when the cancellation token is done.
-        await Task.WhenAll(_workerTasks);
+        try
+        {
+            await Task.WhenAll(_workerTasks);
+        }
+        catch(TaskCanceledException)
+        {
+            // This is expected. We should just log and exist cleanly here.
+            // TODO: Logging
+        }
     }
 }

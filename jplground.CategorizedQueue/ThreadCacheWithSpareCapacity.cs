@@ -59,23 +59,9 @@ public class ThreadCacheWithSpareCapacity<TCategory> : IDisposable where TCatego
             throw new Exception($"Did not have configuration for key {key}. Can't process it.");
         }
 
-        // Task.Run will always use the threadpool so we don't have to worry about the SynchronizationContext here.
-        var workerItem = await Task<WorkerItem>.Run(() => 
-        {
-            while(!token.IsCancellationRequested)
-            {
-                var indexOfSemaphore = WaitHandle.WaitAny(keyThread, TIMEOUT_SEMAPHORE_WAIT_MS);
+        var signaledWaitHandleIndex = await WaitHandleExtensions.WaitAnyAsync(keyThread, token);
 
-                if(indexOfSemaphore != WaitHandle.WaitTimeout)
-                {
-                    // We got an index
-                    return Task.FromResult(new WorkerItem(this, key, indexOfSemaphore == KEY_POOL_INDEX));
-                }
-            }
-            return null;
-        }, token);       // Need this to run on the threadpool to work.
-
-        return workerItem;
+        return new WorkerItem(this, key, signaledWaitHandleIndex == KEY_POOL_INDEX);
     }
 
     private void ReleaseWorkerItem(WorkerItem item)
