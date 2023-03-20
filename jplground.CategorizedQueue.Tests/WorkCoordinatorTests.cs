@@ -153,6 +153,39 @@ public class WorkCoordinatorTests
 
         cts.Cancel();
         await loop;
+    }
 
+    [Fact]
+    public async Task GivenSomeWorkWithAReturnValue_ReturnsTheValue()
+    {
+        var returnedData = "Hello World";
+        
+        var workCoordinator = new WorkCoordinator<WorkItemCategory, Guid>(1, OnlySpareCapacitySetup);
+        
+        var cts = new CancellationTokenSource();
+        var t = workCoordinator.StartProcessingLoop(cts.Token);
+
+        var workerTask = workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () => returnedData);
+        (await workerTask).Should().Be(returnedData);
+
+        cts.Cancel();
+        await t;
+    }
+
+    [Fact]
+    public async Task GivenSomeWorkThatThrowsException_ExceptionIsThrowWhenAwaited()
+    {
+        var exception = new Exception("Test Exception");
+        
+        var workCoordinator = new WorkCoordinator<WorkItemCategory, Guid>(1, OnlySpareCapacitySetup);
+        
+        var cts = new CancellationTokenSource();
+        var t = workCoordinator.StartProcessingLoop(cts.Token);
+
+        var workerTask = workCoordinator.Enqueue<string>(WorkItemCategory.Kafka, Guid.NewGuid(), () => throw exception);
+        workerTask.Invoking(async _ => await workerTask).Should().ThrowAsync<Exception>().WithMessage(exception.Message);
+
+        cts.Cancel();
+        await t;
     }
 }

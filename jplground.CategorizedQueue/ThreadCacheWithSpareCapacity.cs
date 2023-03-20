@@ -67,7 +67,7 @@ public class ThreadCacheWithSpareCapacity<TCategory> : IDisposable where TCatego
         return new WorkerItem(this, key, signaledWaitHandleIndex == KEY_POOL_INDEX);
         */
 
-        var indexOfSemaphore = await WaitHandleExtensions.WaitAnyAsync(keyThread, token);
+        var indexOfSemaphore = await WaitHandleExtensions.WaitAnyAsync(keyThread, token).ConfigureAwait(false);
         return new WorkerItem(this, key, indexOfSemaphore == KEY_POOL_INDEX);
     }
 

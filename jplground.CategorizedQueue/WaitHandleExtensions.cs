@@ -37,7 +37,7 @@ public static class WaitHandleExtensions
 
     public static Task<int?> WaitAnyAsync(WaitHandle[] waitHandles, CancellationToken token)
     {
-        const int TIMEOUT_SEMAPHORE_WAIT_MS = 10;
+        const int TIMEOUT_SEMAPHORE_WAIT_MS = 10;       // TODO: See if we can do this using the cancellation token instead of having to loop continuously.
             
         return Task<int?>.Run(() => 
         {
