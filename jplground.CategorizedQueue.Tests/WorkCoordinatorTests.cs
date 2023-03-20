@@ -101,4 +101,58 @@ public class WorkCoordinatorTests
         cts.Cancel();
         await t;
     }
+
+    [Fact(Timeout=5000)]
+    public async Task GivenAPoolWith2Threads_Only2ThreadsCanRunConcurrently()
+    {
+        Dictionary<WorkItemCategory, int> oneWorkerThread = new Dictionary<WorkItemCategory, int>()
+        {
+            {WorkItemCategory.Kafka, 1}
+        };
+
+        var key = Guid.NewGuid();
+        var workCoordinator = new WorkCoordinator<WorkItemCategory, Guid>(1, oneWorkerThread);
+
+        var cts = new CancellationTokenSource();
+        var loop = workCoordinator.StartProcessingLoop(cts.Token);
+
+        var blocker = new ManualResetEventSlim();
+        var t1Started = new ManualResetEventSlim();
+        var t2Started = new ManualResetEventSlim();
+        var t3Started = new ManualResetEventSlim();
+        var t1 = workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () =>
+        {
+            t1Started.Set();
+            blocker.Wait();
+        });
+        var t2 = workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () =>
+        {
+            t2Started.Set();
+            blocker.Wait();
+        });
+        // This one shouldn't start because 
+        var t3 = workCoordinator.Enqueue(WorkItemCategory.Kafka, Guid.NewGuid(), () =>
+        {
+            t3Started.Set();
+            blocker.Wait();
+        });
+
+        t1Started.Wait();
+        t2Started.Wait();
+        await Task.Delay(1000);
+        // This shouldn't have started
+        t3Started.Wait(0).Should().BeFalse();
+        // Now let them all go
+        blocker.Set();
+        await Task.Delay(1000);
+        t3Started.Wait(0).Should().BeTrue();
+
+        await t1;
+        await t2;
+        await t3;
+
+        cts.Cancel();
+        await loop;
+
+    }
 }

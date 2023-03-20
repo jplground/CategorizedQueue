@@ -33,17 +33,6 @@ public class WaitHandleExtensionsTests
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    public void GivenTwoSemaphores_WaitAnyShouldWork(int indexToSignal)
-    {
-        var semaphores = new [] {new Semaphore(1, 1), new Semaphore(1,1)};
-        semaphores[indexToSignal].WaitOne();
-        var signalled = WaitHandleExtensions.WaitAny(semaphores, CancellationToken.None);
-        signalled.Should().Be(indexToSignal == 0 ? 1 : 0);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
     public async Task GivenTwoSemaphores_WaitAnyAsyncShouldWork(int indexToSignal)
     {
         var semaphores = new [] {new Semaphore(1, 1), new Semaphore(1,1)};

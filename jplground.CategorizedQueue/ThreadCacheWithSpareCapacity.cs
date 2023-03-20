@@ -39,6 +39,7 @@ public class ThreadCacheWithSpareCapacity<TCategory> : IDisposable where TCatego
         }
     }
 
+    /*
     public bool HasCapacityFor(TCategory key)
     {
         if(!_threadsByKey.TryGetValue(key, out var semaphoresByKey))
@@ -49,6 +50,7 @@ public class ThreadCacheWithSpareCapacity<TCategory> : IDisposable where TCatego
 
         return indexOfSemaphore != WaitHandle.WaitTimeout;
     }
+    */
 
     public async Task<IDisposable> WaitNext(TCategory key, CancellationToken token)
     {
@@ -59,9 +61,14 @@ public class ThreadCacheWithSpareCapacity<TCategory> : IDisposable where TCatego
             throw new Exception($"Did not have configuration for key {key}. Can't process it.");
         }
 
+        /*
         var signaledWaitHandleIndex = await WaitHandleExtensions.WaitAnyAsync(keyThread, token);
 
         return new WorkerItem(this, key, signaledWaitHandleIndex == KEY_POOL_INDEX);
+        */
+
+        var indexOfSemaphore = await WaitHandleExtensions.WaitAnyAsync(keyThread, token);
+        return new WorkerItem(this, key, indexOfSemaphore == KEY_POOL_INDEX);
     }
 
     private void ReleaseWorkerItem(WorkerItem item)

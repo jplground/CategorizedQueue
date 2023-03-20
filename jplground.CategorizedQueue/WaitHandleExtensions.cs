@@ -4,6 +4,7 @@ namespace jplground.CategorizedQueue;
 
 public static class WaitHandleExtensions
 {
+ // Commenting these out for now as they don't work the way we want them to
     public static Task ToTask(this WaitHandle waitHandle)
     {
         if (waitHandle == null)
@@ -22,6 +23,7 @@ public static class WaitHandleExtensions
         return t;
     }
 
+/*
     public static int WaitAny(WaitHandle[] waitHandles, CancellationToken token)
     {
         var taskArray = new Task[waitHandles.Length];
@@ -31,12 +33,24 @@ public static class WaitHandleExtensions
         }
         return Task.WaitAny(taskArray, token);
     }
+*/
 
-    public static Task<int> WaitAnyAsync(WaitHandle[] waitHandles, CancellationToken token)
+    public static Task<int?> WaitAnyAsync(WaitHandle[] waitHandles, CancellationToken token)
     {
-        // Task.Run will always use the threadpool so we don't have to worry about the SynchronizationContext here.
-        return Task.Run(() => {
-            return WaitAny(waitHandles, token);
-        }, token);
+        const int TIMEOUT_SEMAPHORE_WAIT_MS = 10;
+            
+        return Task<int?>.Run(() => 
+        {
+            while(!token.IsCancellationRequested)
+            {
+                var indexOfSemaphore = WaitHandle.WaitAny(waitHandles, TIMEOUT_SEMAPHORE_WAIT_MS);
+
+                if(indexOfSemaphore != WaitHandle.WaitTimeout)
+                {
+                    return indexOfSemaphore;
+                }
+            }
+            return (int?)null;
+        }, token);       // Need this to run on the threadpool to work.
     }
 }
